@@ -12,6 +12,13 @@ import {
 import uuid from 'react-native-uuid';
 import { useTheme } from './_layout';
 
+const formatCurrency = (value) => {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(value);
+};
+
 export default function AddTransactionScreen() {
   const { theme } = useTheme();
   const [description, setDescription] = useState('');

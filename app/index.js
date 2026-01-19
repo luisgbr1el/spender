@@ -19,6 +19,13 @@ import { useTheme } from './_layout';
 import Card from './components/card';
 import Navbar from './components/navbar';
 
+const formatCurrency = (value) => {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(value);
+};
+
 export default function HomeScreen() {
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === 'dark';
@@ -48,8 +55,10 @@ export default function HomeScreen() {
     }, [])
   );
 
-  const getBalance = () =>
-    transactions.reduce((acc, tx) => acc + tx.amount, 0).toFixed(2).replace('.', ',');
+  const getBalance = () => {
+    const balance = transactions.reduce((acc, tx) => acc + tx.amount, 0);
+    return formatCurrency(balance);
+  };
 
   const handleDelete = async (id) => {
     try {
@@ -78,7 +87,7 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <Card
         title="Saldo"
-        text={"R$ " + getBalance()}
+        text={getBalance()}
         textColor={theme.text}
         backgroundColor="#5abf70"
       />
@@ -99,7 +108,7 @@ export default function HomeScreen() {
             
             <View style={styles.amountContainer}>
               <Text style={[styles.amount, { color: item.amount < 0 ? 'red' : '#5abf70' }]}>
-                R$ {item.amount.toFixed(2).replace('.', ',')}
+                {formatCurrency(item.amount)}
               </Text>
             </View>
             
