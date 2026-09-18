@@ -1,5 +1,5 @@
 import { createContext, useEffect, useState } from 'react';
-import { useColorScheme } from 'react-native';
+import { Appearance, useColorScheme } from 'react-native';
 
 export const ThemeContext = createContext();
 
@@ -12,8 +12,11 @@ export const ThemeProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    setTheme(systemScheme);
-  }, [systemScheme]);
+    const sub = Appearance.addChangeListener(({ colorScheme }) => {
+      setTheme(colorScheme || 'light');
+    });
+    return () => sub.remove();
+  }, []);
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>

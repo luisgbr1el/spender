@@ -1,18 +1,14 @@
-import { useRouter } from 'expo-router';
 import {
     StyleSheet,
     Switch,
     Text,
     View
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from './_layout';
 
 export default function SettingsScreen() {
     const { theme, toggleTheme, themeName } = useTheme();
     const isDark = themeName === 'dark';
-    const router = useRouter();
-    const insets = useSafeAreaInsets();
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>

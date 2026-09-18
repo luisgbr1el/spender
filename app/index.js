@@ -1,20 +1,18 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from '@react-navigation/native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import {
-  Alert,
-  findNodeHandle,
-  FlatList,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  UIManager,
-  View
+    Alert,
+    findNodeHandle,
+    FlatList,
+    Modal,
+    Pressable,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    UIManager,
+    View
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from './_layout';
 import Card from './components/card';
 import Navbar from './components/navbar';
@@ -27,11 +25,9 @@ const formatCurrency = (value) => {
 };
 
 export default function HomeScreen() {
-  const { theme, toggleTheme } = useTheme();
-  const isDark = theme === 'dark';
+  const { theme } = useTheme();
   const [transactions, setTransactions] = useState([]);
   const router = useRouter();
-  const insets = useSafeAreaInsets();
 
   const [menuVisible, setMenuVisible] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
@@ -59,6 +55,31 @@ export default function HomeScreen() {
     const balance = transactions.reduce((acc, tx) => acc + tx.amount, 0);
     return formatCurrency(balance);
   };
+
+  const getMonthlySummary = () => {
+    const now = new Date();
+    const currentMonthTransactions = transactions.filter(transaction => {
+      const date = new Date(transaction.date);
+      return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+    });
+    const income = currentMonthTransactions
+      .filter(transaction => transaction.amount > 0)
+      .reduce((total, transaction) => total + transaction.amount, 0);
+    const expenses = currentMonthTransactions
+      .filter(transaction => transaction.amount < 0)
+      .reduce((total, transaction) => total + Math.abs(transaction.amount), 0);
+    const byCategory = currentMonthTransactions
+      .filter(transaction => transaction.amount < 0)
+      .reduce((summary, transaction) => {
+        const category = transaction.category || 'Outros';
+        summary[category] = (summary[category] || 0) + Math.abs(transaction.amount);
+        return summary;
+      }, {});
+
+    return { income, expenses, byCategory };
+  };
+
+  const monthlySummary = getMonthlySummary();
 
   const handleDelete = async (id) => {
     try {
@@ -91,6 +112,29 @@ export default function HomeScreen() {
         textColor={theme.text}
         backgroundColor="#5abf70"
       />
+      <View style={[styles.summary, { backgroundColor: theme.backgroundContainer }]}>
+        <Text style={[styles.summaryTitle, { color: theme.text }]}>Resumo do mês</Text>
+        <View style={styles.summaryTotals}>
+          <View>
+            <Text style={[styles.summaryLabel, { color: theme.placeholder }]}>Receitas</Text>
+            <Text style={[styles.summaryValue, { color: '#5abf70' }]}>
+              {formatCurrency(monthlySummary.income)}
+            </Text>
+          </View>
+          <View>
+            <Text style={[styles.summaryLabel, { color: theme.placeholder }]}>Despesas</Text>
+            <Text style={[styles.summaryValue, { color: '#d9534f' }]}>
+              {formatCurrency(monthlySummary.expenses)}
+            </Text>
+          </View>
+        </View>
+        {Object.entries(monthlySummary.byCategory).map(([category, value]) => (
+          <View style={styles.categoryRow} key={category}>
+            <Text style={[styles.categoryName, { color: theme.text }]}>{category}</Text>
+            <Text style={[styles.categoryValue, { color: theme.text }]}>{formatCurrency(value)}</Text>
+          </View>
+        ))}
+      </View>
       <FlatList
         data={transactions}
         keyExtractor={item => item.id}
@@ -188,6 +232,41 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     height: 50,
+  },
+  summary: {
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 12,
+  },
+  summaryTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 12,
+  },
+  summaryTotals: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  summaryLabel: {
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  summaryValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  categoryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 5,
+  },
+  categoryName: {
+    fontSize: 14,
+  },
+  categoryValue: {
+    fontSize: 14,
+    fontWeight: '500',
   },
   descriptionContainer: {
     flex: 1,

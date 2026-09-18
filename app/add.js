@@ -2,57 +2,58 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-  Alert,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    Modal,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import uuid from 'react-native-uuid';
 import { useTheme } from './_layout';
 
-const formatCurrency = (value) => {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL'
-  }).format(value);
-};
+const categories = ['Alimentação', 'Transporte', 'Moradia', 'Lazer', 'Saúde', 'Outros'];
 
 export default function AddTransactionScreen() {
   const { theme } = useTheme();
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
+  const [category, setCategory] = useState('Outros');
   const [isNegative, setIsNegative] = useState(false);
+  const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const isEditing = !!id;
 
   useEffect(() => {
-    if (isEditing) {
-      loadTransaction();
-    }
-  }, [id]);
+    if (!isEditing) return;
 
-  const loadTransaction = async () => {
-    try {
-      const data = await AsyncStorage.getItem('@transactions');
-      const transactions = JSON.parse(data || '[]');
-      const transaction = transactions.find(t => t.id === id);
-      
-      if (transaction) {
-        setDescription(transaction.description);
-        const amountValue = transaction.amount;
-        // Check if negative and set state accordingly
-        setIsNegative(amountValue < 0);
-        // Store absolute value in the input
-        setAmount(String(Math.abs(amountValue)).replace('.', ','));
+    const loadTransaction = async () => {
+      try {
+        const data = await AsyncStorage.getItem('@transactions');
+        const transactions = JSON.parse(data || '[]');
+        const transaction = transactions.find(t => t.id === id);
+        
+        if (transaction) {
+          setDescription(transaction.description);
+          setCategory(transaction.category || 'Outros');
+          const amountValue = transaction.amount;
+          // Check if negative and set state accordingly
+          setIsNegative(amountValue < 0);
+          // Store absolute value in the input
+          setAmount(String(Math.abs(amountValue)).replace('.', ','));
+        }
+      } catch (error) {
+        console.error('Error loading transaction:', error);
+        Alert.alert('Erro', 'Não foi possível carregar os dados da transação.');
       }
-    } catch (error) {
-      console.error('Error loading transaction:', error);
-      Alert.alert('Erro', 'Não foi possível carregar os dados da transação.');
-    }
-  };
+    };
+
+    loadTransaction();
+  }, [id, isEditing]);
 
   const toggleSign = () => {
     setIsNegative(!isNegative);
@@ -79,7 +80,7 @@ export default function AddTransactionScreen() {
       if (isEditing) {
         const updatedTransactions = transactions.map(t => 
           t.id === id 
-          ? { ...t, description, amount: value, updatedAt: new Date().toISOString() } 
+          ? { ...t, description, amount: value, category, updatedAt: new Date().toISOString() } 
           : t
         );
         await AsyncStorage.setItem('@transactions', JSON.stringify(updatedTransactions));
@@ -88,6 +89,7 @@ export default function AddTransactionScreen() {
           id: uuid.v4(),
           description,
           amount: value,
+          category,
           date: new Date().toISOString(),
         };
         const updated = [newTransaction, ...transactions];
@@ -137,6 +139,15 @@ export default function AddTransactionScreen() {
         {isNegative ? 'Despesa (valor será negativo)' : 'Receita (valor será positivo)'}
       </Text>
 
+      <Text style={[{ color: theme.text }]}>Categoria:</Text>
+      <TouchableOpacity
+        style={[styles.categoryButton, { borderColor: theme.placeholder }]}
+        onPress={() => setCategoryModalVisible(true)}
+      >
+        <Text style={{ color: theme.text }}>{category}</Text>
+        <Text style={{ color: theme.placeholder }}>Selecionar</Text>
+      </TouchableOpacity>
+
       <TouchableOpacity 
         style={[styles.button, { backgroundColor: '#5abf70' }]} 
         onPress={saveTransaction}
@@ -145,6 +156,33 @@ export default function AddTransactionScreen() {
           {isEditing ? 'Atualizar' : 'Salvar'}
         </Text>
       </TouchableOpacity>
+
+      <Modal
+        transparent
+        visible={categoryModalVisible}
+        animationType="fade"
+        onRequestClose={() => setCategoryModalVisible(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setCategoryModalVisible(false)}>
+          <View style={[styles.categoryModal, { backgroundColor: theme.backgroundContainer }]}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Escolha uma categoria</Text>
+            <ScrollView>
+              {categories.map(option => (
+                <TouchableOpacity
+                  key={option}
+                  style={styles.categoryOption}
+                  onPress={() => {
+                    setCategory(option);
+                    setCategoryModalVisible(false);
+                  }}
+                >
+                  <Text style={{ color: theme.text }}>{option}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -192,6 +230,36 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: -5,
     marginBottom: 15,
+  },
+  categoryButton: {
+    borderWidth: 1,
+    borderRadius: 6,
+    padding: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 24,
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+  },
+  categoryModal: {
+    borderRadius: 8,
+    padding: 16,
+    maxHeight: '70%',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  categoryOption: {
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(128, 128, 128, 0.35)',
   },
   button: {
     padding: 14,
